@@ -1,6 +1,25 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import HelloWorld from './components/HelloWorld.vue'
 import TheWelcome from './components/TheWelcome.vue'
+
+const apiResponse = ref<string | null>(null)
+const apiError = ref<string | null>(null)
+
+const fetchData = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/artists')
+    console.log(response)
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`)
+    }
+    apiResponse.value = await response.text()
+  } catch (error) {
+    apiError.value = (error as Error).message
+  }
+}
+
+onMounted(fetchData)
 </script>
 
 <template>
@@ -14,6 +33,13 @@ import TheWelcome from './components/TheWelcome.vue'
 
   <main>
     <TheWelcome />
+
+    <div class="api-response">
+      <h2>API Response:</h2>
+      <div v-if="apiResponse" v-html="apiResponse"></div>
+      <p v-else-if="apiError" class="error">Error: {{ apiError }}</p>
+      <p v-else>Loading...</p>
+    </div>
   </main>
 </template>
 
@@ -25,6 +51,14 @@ header {
 .logo {
   display: block;
   margin: 0 auto 2rem;
+}
+
+.api-response {
+  margin-top: 2rem;
+}
+
+.error {
+  color: red;
 }
 
 @media (min-width: 1024px) {
