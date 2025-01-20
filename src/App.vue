@@ -1,21 +1,24 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import axios from 'axios'
 
 const apiResponse = ref<string | null>(null)
 const apiError = ref<string | null>(null)
 
 const fetchData = async () => {
   try {
-    const response = await fetch('http://localhost:3000/artists')
+    const response = await axios.get('http://localhost:3000/artists')
     console.log(response)
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`)
-    }
-    apiResponse.value = await response.text()
+    apiResponse.value = response.data
   } catch (error) {
-    apiError.value = (error as Error).message
+    if (axios.isAxiosError(error)) {
+      apiError.value = `HTTP error! Status: ${error.response?.status} - ${error.response?.statusText}`
+    } else if (error instanceof Error) {
+      apiError.value = error.message
+    } else {
+      apiError.value = 'An unknown error occurred'
+    }
   }
 }
 
@@ -32,8 +35,6 @@ onMounted(fetchData)
   </header>
 
   <main>
-    <TheWelcome />
-
     <div class="api-response">
       <h2>API Response:</h2>
       <div v-if="apiResponse" v-html="apiResponse"></div>
