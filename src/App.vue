@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import HelloWorld from './components/HelloWorld.vue'
 import axios from 'axios'
 
 const apiResponse = ref<string | null>(null)
@@ -27,11 +26,7 @@ onMounted(fetchData)
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
+    <h1>Welcome</h1>
   </header>
 
   <main>
@@ -40,6 +35,14 @@ onMounted(fetchData)
       <div v-if="apiResponse" v-html="apiResponse"></div>
       <p v-else-if="apiError" class="error">Error: {{ apiError }}</p>
       <p v-else>Loading...</p>
+      <nav>
+        <ul>
+          <li>Artists</li>
+          <li>Albums</li>
+          <li>Genres</li>
+          <li>Years</li>
+        </ul>
+      </nav>
     </div>
   </main>
 </template>
