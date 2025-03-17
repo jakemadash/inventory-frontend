@@ -2,13 +2,14 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
+axios.defaults.baseURL = 'http://localhost:3000/'
+
 const apiResponse = ref<string | null>(null)
 const apiError = ref<string | null>(null)
 
 const fetchData = async () => {
   try {
-    const response = await axios.get('http://localhost:3000/artists')
-    console.log(response)
+    const response = await axios.get('artists')
     apiResponse.value = response.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
