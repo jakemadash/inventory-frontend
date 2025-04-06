@@ -1,28 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
-
-axios.defaults.baseURL = 'http://localhost:3000/'
-
-const apiResponse = ref<string | null>(null)
-const apiError = ref<string | null>(null)
-
-const fetchData = async () => {
-  try {
-    const response = await axios.get('artists')
-    apiResponse.value = response.data
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      apiError.value = `HTTP error! Status: ${error.response?.status} - ${error.response?.statusText}`
-    } else if (error instanceof Error) {
-      apiError.value = error.message
-    } else {
-      apiError.value = 'An unknown error occurred'
-    }
-  }
-}
-
-onMounted(fetchData)
+import { useFetch } from './composables/useFetch'
+const { apiResponse, apiError } = useFetch('artists')
 </script>
 
 <template>
