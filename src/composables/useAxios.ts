@@ -1,17 +1,22 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-type EntityData = {
+type EntityPostData = {
   artist?: string
   album?: string
   genre?: string
   year?: string
 }
 
+type EntityItem = {
+  id: number
+  name: string
+}
+
 export const useAxios = (entity: string) => {
   axios.defaults.baseURL = 'http://localhost:3000/'
 
-  const apiResponse = ref<string | null>(null)
+  const apiResponse = ref<EntityItem[] | null>(null)
   const apiError = ref<string | null>(null)
 
   const handleError = (e: unknown) => {
@@ -33,7 +38,7 @@ export const useAxios = (entity: string) => {
     }
   }
 
-  const postData = async (data: EntityData) => {
+  const postData = async (data: EntityPostData) => {
     try {
       await axios.post(`${entity}/new`, data)
     } catch (e) {

@@ -35,7 +35,20 @@ const handleSubmit = async (e: Event) => {
 
   <main>
     <div class="api-response">
-      <div v-if="apiResponse" v-html="apiResponse"></div>
+      <table v-if="apiResponse">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in apiResponse" :key="item.id">
+            <td>{{ item.id }}</td>
+            <td>{{ item.name ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
       <p v-else-if="apiError" class="error">Error: {{ apiError }}</p>
       <p v-else>Loading...</p>
     </div>
