@@ -29,16 +29,17 @@ export const useAxios = (entity: string) => {
     }
   }
 
-  const fetchData = async () => {
+  const get = async () => {
     try {
       const response = await axios.get(entity)
+      console.log('res:', entity.toString(), response.data)
       apiResponse.value = response.data
     } catch (e) {
       handleError(e)
     }
   }
 
-  const postData = async (data: EntityPostData) => {
+  const post = async (data: EntityPostData) => {
     try {
       await axios.post(`${entity}/new`, data)
     } catch (e) {
@@ -46,6 +47,15 @@ export const useAxios = (entity: string) => {
     }
   }
 
-  onMounted(fetchData)
-  return { fetchData, postData, apiResponse, apiError }
+  const remove = async (id: number) => {
+    try {
+      await axios.delete(`${entity}/${id}/delete`)
+      await get()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  onMounted(get)
+  return { get, post, remove, apiResponse, apiError }
 }

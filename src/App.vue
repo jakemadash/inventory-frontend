@@ -5,16 +5,16 @@ import { useAxios } from './composables/useAxios'
 const name = ref('')
 const modalRef = ref<HTMLDivElement | null>(null)
 
-const { fetchData, postData, apiResponse, apiError } = useAxios('artists')
+const { get, post, remove, apiResponse, apiError } = useAxios('artists')
 
 const handleSubmit = async (e: Event) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
-  await postData({ artist: name.value })
+  await post({ artist: name.value })
 
   name.value = ''
-  await fetchData()
+  await get()
   modalRef.value?.hidePopover?.()
 }
 </script>
@@ -38,14 +38,17 @@ const handleSubmit = async (e: Event) => {
       <table v-if="apiResponse">
         <thead>
           <tr>
-            <th>ID</th>
             <th>Name</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in apiResponse" :key="item.id">
-            <td>{{ item.id }}</td>
             <td>{{ item.name ?? '—' }}</td>
+            <td>
+              <button class="edit">+</button>
+              <button class="error" @click="() => remove(item.id)">-</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -70,6 +73,11 @@ header {
   line-height: 1.5;
 }
 
+button {
+  font-weight: 600;
+  margin: 0 5px;
+}
+
 .logo {
   display: block;
   margin: 0 auto 2rem;
@@ -81,6 +89,10 @@ header {
 
 .error {
   color: red;
+}
+
+.edit {
+  color: green;
 }
 
 @media (min-width: 1024px) {
