@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useFetch } from './composables/useFetch'
+import { useAxios } from './composables/useAxios'
 
 const name = ref('')
 const modalRef = ref<HTMLDivElement | null>(null)
 
-const { apiResponse, apiError, fetchData } = useFetch('artists')
+const { fetchData, postData, apiResponse, apiError } = useAxios('artists')
 
 const handleSubmit = async (e: Event) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
-  await useFetch('artists', {
-    method: 'post',
-    data: { artist: name.value },
-  }).fetchData()
+  await postData({ artist: name.value })
 
   name.value = ''
   await fetchData()
