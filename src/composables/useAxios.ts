@@ -2,10 +2,8 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
 type EntityPostData = {
-  artist?: string
-  album?: string
-  genre?: string
-  year?: string
+  id?: number
+  value: string
 }
 
 type EntityItem = {
@@ -47,6 +45,15 @@ export const useAxios = (entity: string) => {
     }
   }
 
+  const update = async (data: EntityPostData) => {
+    const id = data.id
+    try {
+      await axios.put(`${entity}/${id}/edit`, data)
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
   const remove = async (id: number) => {
     try {
       await axios.delete(`${entity}/${id}/delete`)
@@ -57,5 +64,5 @@ export const useAxios = (entity: string) => {
   }
 
   onMounted(get)
-  return { get, post, remove, apiResponse, apiError }
+  return { get, post, update, remove, apiResponse, apiError }
 }

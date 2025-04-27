@@ -1,17 +1,43 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useAxios } from './composables/useAxios'
+
+const { get, post, update, remove, apiResponse, apiError } = useAxios('artists')
 
 const name = ref('')
 const modalRef = ref<HTMLDivElement | null>(null)
+const editingId = ref<number | null>(null)
+const editingName = ref('')
 
-const { get, post, remove, apiResponse, apiError } = useAxios('artists')
+const startEditing = async (id: number, currentName: string) => {
+  editingId.value = id
+  editingName.value = currentName
+  await nextTick()
+
+  const inputElement = document.querySelector(`#edit-input-${id}`) as HTMLInputElement | null
+  inputElement?.focus()
+}
+
+const saveEdit = async (id: number) => {
+  if (!editingName.value.trim()) return
+
+  await update({ id, value: editingName.value })
+  editingId.value = null
+  editingName.value = ''
+  await get()
+}
+
+const cancelEdit = () => {
+  console.log('ok')
+  editingId.value = null
+  editingName.value = ''
+}
 
 const handleSubmit = async (e: Event) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
-  await post({ artist: name.value })
+  await post({ value: name.value })
 
   name.value = ''
   await get()
@@ -44,9 +70,21 @@ const handleSubmit = async (e: Event) => {
         </thead>
         <tbody>
           <tr v-for="item in apiResponse" :key="item.id">
-            <td>{{ item.name ?? '—' }}</td>
             <td>
-              <button class="edit">+</button>
+              <div v-if="editingId === item.id">
+                <input
+                  :id="`edit-input-${item.id}`"
+                  v-model="editingName"
+                  @keyup.enter="saveEdit(item.id)"
+                  @blur="cancelEdit"
+                />
+              </div>
+              <div v-else>
+                {{ item.name ?? '—' }}
+              </div>
+            </td>
+            <td>
+              <button class="edit" @click="() => startEditing(item.id, item.name)">+</button>
               <button class="error" @click="() => remove(item.id)">-</button>
             </td>
           </tr>
