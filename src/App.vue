@@ -5,6 +5,7 @@ import { useAxios } from './composables/useAxios'
 const { get, post, update, remove, apiResponse, apiError } = useAxios('artists')
 
 const name = ref('')
+const genres = ref('')
 const modalRef = ref<HTMLDivElement | null>(null)
 const editingId = ref<number | null>(null)
 const editingName = ref('')
@@ -21,7 +22,7 @@ const startEditing = async (id: number, currentName: string) => {
 const saveEdit = async (id: number) => {
   if (!editingName.value.trim()) return
 
-  await update({ id, value: editingName.value })
+  await update({ id, name: editingName.value })
   editingId.value = null
   editingName.value = ''
   await get()
@@ -37,9 +38,10 @@ const handleSubmit = async (e: Event) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
-  await post({ value: name.value })
+  await post({ name: name.value, genres: genres.value })
 
   name.value = ''
+  genres.value = ''
   await get()
   modalRef.value?.hidePopover?.()
 }
@@ -99,6 +101,8 @@ const handleSubmit = async (e: Event) => {
       <form @submit="handleSubmit">
         <label for="name">Name:</label>
         <input type="text" id="name" autofocus v-model="name" />
+        <label for="genres">Genres:</label>
+        <textarea id="genres" v-model="genres"></textarea>
         <input type="submit" value="Add" />
       </form>
     </div>

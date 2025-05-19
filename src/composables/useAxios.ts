@@ -3,7 +3,8 @@ import axios from 'axios'
 
 type EntityPostData = {
   id?: number
-  value: string
+  name?: string
+  genres?: string
 }
 
 type EntityItem = {
