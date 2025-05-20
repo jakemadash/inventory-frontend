@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 import { ref, nextTick } from 'vue'
 import { useAxios } from './composables/useAxios'
 
@@ -6,23 +6,23 @@ const { get, post, update, remove, apiResponse, apiError } = useAxios('artists')
 
 const name = ref('')
 const genres = ref('')
-const modalRef = ref<HTMLDivElement | null>(null)
-const editingId = ref<number | null>(null)
+const modalRef = (ref < HTMLDivElement) | (null > null)
+const editingId = (ref < number) | (null > null)
 const editingName = ref('')
 
-const startEditing = async (id: number, currentName: string) => {
+const startEditing = async (id, currentName) => {
   editingId.value = id
   editingName.value = currentName
   await nextTick()
 
-  const inputElement = document.querySelector(`#edit-input-${id}`) as HTMLInputElement | null
+  const inputElement = document.querySelector(`#edit-input-${id}`)
   inputElement?.focus()
 }
 
-const saveEdit = async (id: number) => {
+const saveEdit = async (id) => {
   if (!editingName.value.trim()) return
 
-  await update({ id, name: editingName.value })
+  await update({ id, artist: editingName.value })
   editingId.value = null
   editingName.value = ''
   await get()
@@ -34,11 +34,11 @@ const cancelEdit = () => {
   editingName.value = ''
 }
 
-const handleSubmit = async (e: Event) => {
+const handleSubmit = async (e) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
-  await post({ name: name.value, genres: genres.value })
+  await post({ artist: name.value, genres: genres.value })
 
   name.value = ''
   genres.value = ''
@@ -71,23 +71,25 @@ const handleSubmit = async (e: Event) => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in apiResponse" :key="item.id">
+          <tr v-for="item in apiResponse" :key="item.artist_id">
             <td>
-              <div v-if="editingId === item.id">
+              <div v-if="editingId === item.artist_id">
                 <input
-                  :id="`edit-input-${item.id}`"
+                  :id="`edit-input-${item.artist_id}`"
                   v-model="editingName"
-                  @keyup.enter="saveEdit(item.id)"
+                  @keyup.enter="saveEdit(item.artist_id)"
                   @blur="cancelEdit"
                 />
               </div>
               <div v-else>
-                {{ item.name ?? '—' }}
+                {{ item.artist ?? '—' }}
               </div>
             </td>
             <td>
-              <button class="edit" @click="() => startEditing(item.id, item.name)">+</button>
-              <button class="error" @click="() => remove(item.id)">-</button>
+              <button class="edit" @click="() => startEditing(item.artist_id, item.artist)">
+                +
+              </button>
+              <button class="error" @click="() => remove(item.artist_id)">-</button>
             </td>
           </tr>
         </tbody>

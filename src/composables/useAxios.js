@@ -1,24 +1,13 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-type EntityPostData = {
-  id?: number
-  name?: string
-  genres?: string
-}
-
-type EntityItem = {
-  id: number
-  name: string
-}
-
-export const useAxios = (entity: string) => {
+export const useAxios = (entity) => {
   axios.defaults.baseURL = 'http://localhost:3000/'
 
-  const apiResponse = ref<EntityItem[] | null>(null)
-  const apiError = ref<string | null>(null)
+  const apiResponse = ref(null)
+  const apiError = ref(null)
 
-  const handleError = (e: unknown) => {
+  const handleError = (e) => {
     if (axios.isAxiosError(e)) {
       apiError.value = `HTTP error! Status: ${e.response?.status} - ${e.response?.statusText}`
     } else if (e instanceof Error) {
@@ -31,14 +20,14 @@ export const useAxios = (entity: string) => {
   const get = async () => {
     try {
       const response = await axios.get(entity)
-      console.log('res:', entity.toString(), response.data)
+      console.log('res:', entity.toString(), response)
       apiResponse.value = response.data
     } catch (e) {
       handleError(e)
     }
   }
 
-  const post = async (data: EntityPostData) => {
+  const post = async (data) => {
     try {
       await axios.post(`${entity}/new`, data)
     } catch (e) {
@@ -46,7 +35,7 @@ export const useAxios = (entity: string) => {
     }
   }
 
-  const update = async (data: EntityPostData) => {
+  const update = async (data) => {
     const id = data.id
     try {
       await axios.put(`${entity}/${id}/edit`, data)
@@ -55,7 +44,7 @@ export const useAxios = (entity: string) => {
     }
   }
 
-  const remove = async (id: number) => {
+  const remove = async (id) => {
     try {
       await axios.delete(`${entity}/${id}/delete`)
       await get()
