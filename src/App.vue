@@ -38,7 +38,7 @@ const handleSubmit = async (e) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
-  await post({ artist: name.value, genres: genres?.value?.split(', ') })
+  await post({ artist: name.value, genres: genres.value ? genres.value.split(', ') : [] })
 
   name.value = ''
   genres.value = ''
