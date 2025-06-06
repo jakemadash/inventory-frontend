@@ -6,8 +6,8 @@ const { get, post, update, remove, apiResponse, apiError } = useAxios('artists')
 
 const name = ref('')
 const genres = ref('')
-const modalRef = (ref < HTMLDivElement) | (null > null)
-const editingId = (ref < number) | (null > null)
+const modalRef = ref(null)
+const editingId = ref(null)
 const editingName = ref('')
 
 const startEditing = async (id, currentName) => {
@@ -38,7 +38,7 @@ const handleSubmit = async (e) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
-  await post({ artist: name.value, genres: genres.value })
+  await post({ artist: name.value, genres: genres?.value?.split(', ') })
 
   name.value = ''
   genres.value = ''
