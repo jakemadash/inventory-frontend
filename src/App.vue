@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 import { useAxios } from './composables/useAxios'
 
 const { get, post, update, remove, apiResponse, apiError } = useAxios('artists')
@@ -8,35 +8,48 @@ const name = ref('')
 const genres = ref('')
 const modalRef = ref(null)
 const editingId = ref(null)
-const editingName = ref('')
+const isEditing = ref(false)
 
-const startEditing = async (id, currentName) => {
-  editingId.value = id
-  editingName.value = currentName
-  await nextTick()
-  const inputElement = document.querySelector(`#edit-input-${id}`)
-  inputElement?.focus()
+const openAddModal = () => {
+  isEditing.value = false
+  editingId.value = null
+  name.value = ''
+  genres.value = ''
+  modalRef.value?.showPopover?.()
 }
 
-const saveEdit = async (id) => {
-  if (!editingName.value.trim()) return
-  await update({ id, artist: editingName.value })
-  editingId.value = null
-  editingName.value = ''
-  await get()
-}
-
-const cancelEdit = () => {
-  editingId.value = null
-  editingName.value = ''
+const openEditModal = (item) => {
+  isEditing.value = true
+  editingId.value = item.artist_id
+  name.value = item.artist
+  genres.value = item.genres?.join(', ') || ''
+  modalRef.value?.showPopover?.()
 }
 
 const handleSubmit = async (e) => {
   e.preventDefault()
   if (!name.value.trim()) return
-  await post({ artist: name.value, genres: genres.value ? genres.value.split(', ') : [] })
+
+  const payload = {
+    artist: name.value.trim(),
+    genres: genres.value
+      ? genres.value
+          .split(',')
+          .map((g) => g.trim())
+          .filter(Boolean)
+      : [],
+  }
+
+  if (isEditing.value && editingId.value !== null) {
+    await update({ id: editingId.value, ...payload })
+  } else {
+    await post(payload)
+  }
+
   name.value = ''
   genres.value = ''
+  editingId.value = null
+  isEditing.value = false
   await get()
   modalRef.value?.hidePopover?.()
 }
@@ -59,33 +72,21 @@ const handleSubmit = async (e) => {
   <main>
     <div class="api-response">
       <template v-if="apiResponse">
-        <p v-if="apiResponse.length === 0" class="">No artists yet</p>
+        <p v-if="apiResponse.length === 0">No artists yet</p>
         <table v-else>
           <thead>
             <tr>
               <th>Name</th>
+              <th>Genres</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in apiResponse" :key="item.artist_id">
+              <td>{{ item.artist ?? '—' }}</td>
+              <td>{{ item.genres.length > 0 ? item.genres.join(', ') : '—' }}</td>
               <td>
-                <div v-if="editingId === item.artist_id">
-                  <input
-                    :id="`edit-input-${item.artist_id}`"
-                    v-model="editingName"
-                    @keyup.enter="saveEdit(item.artist_id)"
-                    @blur="cancelEdit"
-                  />
-                </div>
-                <div v-else>
-                  {{ item.artist ?? '—' }}
-                </div>
-              </td>
-              <td>
-                <button class="edit" @click="() => startEditing(item.artist_id, item.artist)">
-                  ✏️
-                </button>
+                <button class="edit" @click="() => openEditModal(item)">✏️</button>
                 <button class="error" @click="() => remove(item.artist_id)">🗑️</button>
               </td>
             </tr>
@@ -97,10 +98,10 @@ const handleSubmit = async (e) => {
       <div v-else class="spinner"></div>
     </div>
 
-    <button class="add-button" popovertarget="add-new-modal">➕ Add new</button>
+    <button class="add-button" @click="openAddModal">➕ Add new</button>
 
     <div popover id="add-new-modal" ref="modalRef">
-      <h2>Add Artist</h2>
+      <h2>{{ isEditing ? 'Edit Artist' : 'Add Artist' }}</h2>
       <form @submit="handleSubmit">
         <div class="form-field">
           <label for="name">Name:</label>
@@ -110,9 +111,10 @@ const handleSubmit = async (e) => {
           <label for="genres">Genres (comma separated):</label>
           <textarea id="genres" v-model="genres"></textarea>
         </div>
-        <input type="submit" value="Add" />
+        <input type="submit" :value="isEditing ? 'Save Changes' : 'Add'" />
       </form>
     </div>
+
     <div id="modal-overlay"></div>
   </main>
 </template>
@@ -126,9 +128,6 @@ body {
   font-family: sans-serif;
   margin: 0;
   background: #f8f9fa;
-}
-
-body {
   display: block !important;
   align-items: initial !important;
   justify-items: initial !important;
@@ -220,10 +219,6 @@ button {
   padding: 0.75rem 1.25rem;
   border-radius: 5px;
   font-size: 1rem;
-}
-
-.message {
-  font-size: 2rem;
 }
 
 .add-button:hover {
