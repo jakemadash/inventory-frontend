@@ -1,8 +1,59 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAxios } from './composables/useAxios'
 
-const { get, post, update, remove, apiResponse, apiError } = useAxios('artists')
+const entityConfig = {
+  artists: {
+    label: 'Artist',
+    pluralLabel: 'Artists',
+    nameField: 'artist',
+    idField: 'artist_id',
+    hasGenres: true,
+    extraFields: ['genres'],
+  },
+  genres: {
+    label: 'Genre',
+    pluralLabel: 'Genres',
+    nameField: 'genre',
+    idField: 'genre_id',
+    hasGenres: false,
+    extraFields: ['artists'],
+  },
+  albums: {
+    label: 'Album',
+    pluralLabel: 'Albums',
+    nameField: 'album',
+    idField: 'album_id',
+    hasGenres: false,
+    extraFields: ['artist', 'year'],
+  },
+  years: {
+    label: 'Year',
+    pluralLabel: 'Years',
+    nameField: 'year',
+    idField: 'year_id',
+    hasGenres: false,
+    extraFields: ['albums'],
+  },
+}
+
+const viewMode = ref('artists')
+const currentConfig = computed(() => entityConfig[viewMode.value])
+
+const axiosArtists = useAxios('artists')
+const axiosGenres = useAxios('genres')
+const axiosAlbums = useAxios('albums')
+const axiosYears = useAxios('years')
+
+const currentAxios = computed(() => {
+  const axiosMap = {
+    artists: axiosArtists,
+    genres: axiosGenres,
+    albums: axiosAlbums,
+    years: axiosYears,
+  }
+  return axiosMap[viewMode.value]
+})
 
 const name = ref('')
 const genres = ref('')
@@ -19,10 +70,17 @@ const openAddModal = () => {
 }
 
 const openEditModal = (item) => {
+  const config = currentConfig.value
   isEditing.value = true
-  editingId.value = item.artist_id
-  name.value = item.artist
-  genres.value = item.genres?.join(', ') || ''
+  editingId.value = item[config.idField]
+  name.value = item[config.nameField]
+
+  if (config.hasGenres && item.genres) {
+    genres.value = item.genres.join(', ')
+  } else {
+    genres.value = ''
+  }
+
   modalRef.value?.showPopover?.()
 }
 
@@ -30,28 +88,50 @@ const handleSubmit = async (e) => {
   e.preventDefault()
   if (!name.value.trim()) return
 
+  const config = currentConfig.value
   const payload = {
-    artist: name.value.trim(),
-    genres: genres.value
+    [config.nameField]: name.value.trim(),
+  }
+
+  if (config.hasGenres) {
+    payload.genres = genres.value
       ? genres.value
           .split(',')
           .map((g) => g.trim())
           .filter(Boolean)
-      : [],
+      : []
   }
 
-  if (isEditing.value && editingId.value !== null) {
-    await update({ id: editingId.value, ...payload })
-  } else {
-    await post(payload)
-  }
+  try {
+    if (isEditing.value && editingId.value !== null) {
+      await currentAxios.value.update({ id: editingId.value, ...payload })
+    } else {
+      await currentAxios.value.post(payload)
+    }
 
-  name.value = ''
-  genres.value = ''
-  editingId.value = null
-  isEditing.value = false
-  await get()
-  modalRef.value?.hidePopover?.()
+    name.value = ''
+    genres.value = ''
+    editingId.value = null
+    isEditing.value = false
+
+    await currentAxios.value.get()
+    modalRef.value?.hidePopover?.()
+  } catch (error) {
+    console.error('Submit error:', error)
+  }
+}
+
+const switchView = async (newView) => {
+  viewMode.value = newView
+  await currentAxios.value.get()
+}
+
+const getDisplayValue = (item, field) => {
+  const value = item[field]
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(', ') : '—'
+  }
+  return value || '—'
 }
 </script>
 
@@ -62,55 +142,98 @@ const handleSubmit = async (e) => {
 
   <nav>
     <ul>
-      <li><a href="#">Artists</a></li>
-      <li><a href="#">Albums</a></li>
-      <li><a href="#">Genres</a></li>
-      <li><a href="#">Years</a></li>
+      <li>
+        <a
+          href="#"
+          :class="{ active: viewMode === 'artists' }"
+          @click.prevent="switchView('artists')"
+        >
+          Artists
+        </a>
+      </li>
+      <li>
+        <a
+          href="#"
+          :class="{ active: viewMode === 'albums' }"
+          @click.prevent="switchView('albums')"
+        >
+          Albums
+        </a>
+      </li>
+      <li>
+        <a
+          href="#"
+          :class="{ active: viewMode === 'genres' }"
+          @click.prevent="switchView('genres')"
+        >
+          Genres
+        </a>
+      </li>
+      <li>
+        <a href="#" :class="{ active: viewMode === 'years' }" @click.prevent="switchView('years')">
+          Years
+        </a>
+      </li>
     </ul>
   </nav>
 
   <main>
     <div class="api-response">
-      <template v-if="apiResponse">
-        <p v-if="apiResponse.length === 0">No artists yet</p>
+      <template v-if="currentAxios.apiResponse.value">
+        <p v-if="currentAxios.apiResponse.value.length === 0">
+          No {{ currentConfig.pluralLabel.toLowerCase() }} yet
+        </p>
         <table v-else>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Genres</th>
+              <th>{{ currentConfig.label }}</th>
+              <th v-for="field in currentConfig.extraFields" :key="field">
+                {{ field.charAt(0).toUpperCase() + field.slice(1) }}
+              </th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in apiResponse" :key="item.artist_id">
-              <td>{{ item.artist ?? '—' }}</td>
-              <td>{{ item.genres.length > 0 ? item.genres.join(', ') : '—' }}</td>
+            <tr v-for="item in currentAxios.apiResponse.value" :key="item[currentConfig.idField]">
+              <td>{{ item[currentConfig.nameField] }}</td>
+              <td v-for="field in currentConfig.extraFields" :key="field">
+                {{ getDisplayValue(item, field) }}
+              </td>
               <td>
-                <button class="edit" @click="() => openEditModal(item)">✏️</button>
-                <button class="error" @click="() => remove(item.artist_id)">🗑️</button>
+                <button class="edit" @click="openEditModal(item)">✏️</button>
+                <button class="error" @click="currentAxios.remove(item[currentConfig.idField])">
+                  🗑️
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </template>
 
-      <p v-else-if="apiError" class="error">Error: {{ apiError }}</p>
+      <p v-else-if="currentAxios.apiError.value" class="error">
+        Error: {{ currentAxios.apiError.value }}
+      </p>
+
       <div v-else class="spinner"></div>
     </div>
 
-    <button class="add-button" @click="openAddModal">➕ Add new</button>
+    <button class="add-button" @click="openAddModal">➕ Add {{ currentConfig.label }}</button>
 
     <div popover id="add-new-modal" ref="modalRef">
-      <h2>{{ isEditing ? 'Edit Artist' : 'Add Artist' }}</h2>
+      <h2>
+        {{ isEditing ? `Edit ${currentConfig.label}` : `Add ${currentConfig.label}` }}
+      </h2>
       <form @submit="handleSubmit">
         <div class="form-field">
-          <label for="name">Name:</label>
+          <label for="name">{{ currentConfig.label }} Name:</label>
           <input type="text" id="name" autofocus v-model="name" />
         </div>
-        <div class="form-field">
+
+        <div v-if="currentConfig.hasGenres" class="form-field">
           <label for="genres">Genres (comma separated):</label>
           <textarea id="genres" v-model="genres"></textarea>
         </div>
+
         <input type="submit" :value="isEditing ? 'Save Changes' : 'Add'" />
       </form>
     </div>
@@ -157,11 +280,18 @@ nav li a {
   color: white;
   text-decoration: none;
   padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
 }
 
 nav li a:hover {
   background-color: #2c3e50;
-  border-radius: 4px;
+}
+
+nav li a.active {
+  background-color: #1a252f;
+  font-weight: bold;
 }
 
 main {
@@ -179,6 +309,9 @@ table {
   width: 100%;
   border-collapse: collapse;
   background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 th,
@@ -186,6 +319,11 @@ td {
   padding: 0.75rem;
   text-align: left;
   border-bottom: 1px solid #ddd;
+}
+
+th {
+  background-color: #f8f9fa;
+  font-weight: 600;
 }
 
 input[type='text'],
@@ -219,10 +357,17 @@ button {
   padding: 0.75rem 1.25rem;
   border-radius: 5px;
   font-size: 1rem;
+  transition: background-color 0.2s;
 }
 
 .add-button:hover {
   background: #2980b9;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 form {
