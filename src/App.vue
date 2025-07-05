@@ -17,6 +17,7 @@ const entityConfig = {
     nameField: 'genre',
     idField: 'genre_id',
     hasGenres: false,
+    hasArtists: true,
     extraFields: ['artists'],
   },
   albums: {
@@ -57,6 +58,7 @@ const currentAxios = computed(() => {
 
 const name = ref('')
 const genres = ref('')
+const artists = ref('')
 const modalRef = ref(null)
 const editingId = ref(null)
 const isEditing = ref(false)
@@ -66,6 +68,7 @@ const openAddModal = () => {
   editingId.value = null
   name.value = ''
   genres.value = ''
+  artists.value = ''
   modalRef.value?.showPopover?.()
 }
 
@@ -79,6 +82,12 @@ const openEditModal = (item) => {
     genres.value = item.genres.join(', ')
   } else {
     genres.value = ''
+  }
+
+  if (config.hasArtists && item.artists) {
+    artists.value = item.artists.join(', ')
+  } else {
+    artists.value = ''
   }
 
   modalRef.value?.showPopover?.()
@@ -102,6 +111,15 @@ const handleSubmit = async (e) => {
       : []
   }
 
+  if (config.hasArtists) {
+    payload.artists = artists.value
+      ? artists.value
+          .split(',')
+          .map((a) => a.trim())
+          .filter(Boolean)
+      : []
+  }
+
   try {
     if (isEditing.value && editingId.value !== null) {
       await currentAxios.value.update({ id: editingId.value, ...payload })
@@ -111,6 +129,7 @@ const handleSubmit = async (e) => {
 
     name.value = ''
     genres.value = ''
+    artists.value = ''
     editingId.value = null
     isEditing.value = false
 
@@ -232,6 +251,11 @@ const getDisplayValue = (item, field) => {
         <div v-if="currentConfig.hasGenres" class="form-field">
           <label for="genres">Genres (comma separated):</label>
           <textarea id="genres" v-model="genres"></textarea>
+        </div>
+
+        <div v-if="currentConfig.hasArtists" class="form-field">
+          <label for="artists">Artists (comma separated):</label>
+          <textarea id="artists" v-model="artists"></textarea>
         </div>
 
         <input type="submit" :value="isEditing ? 'Save Changes' : 'Add'" />
