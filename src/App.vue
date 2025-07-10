@@ -9,7 +9,7 @@ const entityConfig = {
     nameField: 'artist',
     idField: 'artist_id',
     hasGenres: true,
-    extraFields: ['genres'],
+    extraFields: ['genres', 'albums'],
   },
   genres: {
     label: 'Genre',
@@ -59,6 +59,7 @@ const currentAxios = computed(() => {
 const name = ref('')
 const genres = ref('')
 const artists = ref('')
+const albums = ref('')
 const modalRef = ref(null)
 const editingId = ref(null)
 const isEditing = ref(false)
@@ -69,6 +70,7 @@ const openAddModal = () => {
   name.value = ''
   genres.value = ''
   artists.value = ''
+  albums.value = ''
   modalRef.value?.showPopover?.()
 }
 
@@ -78,16 +80,16 @@ const openEditModal = (item) => {
   editingId.value = item[config.idField]
   name.value = item[config.nameField]
 
-  if (config.hasGenres && item.genres) {
-    genres.value = item.genres.join(', ')
-  } else {
-    genres.value = ''
-  }
+  genres.value = config.hasGenres && item.genres ? item.genres.join(', ') : ''
+  artists.value = config.hasArtists && item.artists ? item.artists.join(', ') : ''
 
-  if (config.hasArtists && item.artists) {
-    artists.value = item.artists.join(', ')
+  // Parse albums to multiline "Title | Year" format
+  if (item.albums && Array.isArray(item.albums)) {
+    albums.value = item.albums
+      .map((a) => (a.title && a.year ? `${a.title} | ${a.year}` : a.title))
+      .join('\n')
   } else {
-    artists.value = ''
+    albums.value = ''
   }
 
   modalRef.value?.showPopover?.()
@@ -120,6 +122,18 @@ const handleSubmit = async (e) => {
       : []
   }
 
+  if (viewMode.value === 'artists') {
+    payload.albums = albums.value
+      ? albums.value
+          .split('\n')
+          .map((line) => {
+            const [title, year] = line.split('|').map((s) => s.trim())
+            return title ? { title, year: year ? parseInt(year) : null } : null
+          })
+          .filter(Boolean)
+      : []
+  }
+
   try {
     if (isEditing.value && editingId.value !== null) {
       await currentAxios.value.update({ id: editingId.value, ...payload })
@@ -130,6 +144,7 @@ const handleSubmit = async (e) => {
     name.value = ''
     genres.value = ''
     artists.value = ''
+    albums.value = ''
     editingId.value = null
     isEditing.value = false
 
@@ -147,6 +162,9 @@ const switchView = async (newView) => {
 
 const getDisplayValue = (item, field) => {
   const value = item[field]
+  if (field === 'albums' && Array.isArray(value)) {
+    return value.map((a) => (a.title && a.year ? `${a.title} (${a.year})` : a.title)).join(', ')
+  }
   if (Array.isArray(value)) {
     return value.length > 0 ? value.join(', ') : '—'
   }
@@ -256,6 +274,11 @@ const getDisplayValue = (item, field) => {
         <div v-if="currentConfig.hasArtists" class="form-field">
           <label for="artists">Artists (comma separated):</label>
           <textarea id="artists" v-model="artists"></textarea>
+        </div>
+
+        <div v-if="viewMode === 'artists'" class="form-field">
+          <label for="albums">Albums (one per line, format: Title | Year):</label>
+          <textarea id="albums" v-model="albums" rows="4"></textarea>
         </div>
 
         <input type="submit" :value="isEditing ? 'Save Changes' : 'Add'" />
