@@ -20,19 +20,11 @@ const entityConfig = {
     hasArtists: true,
     extraFields: ['artists'],
   },
-  albums: {
-    label: 'Album',
-    pluralLabel: 'Albums',
-    nameField: 'album',
-    idField: 'album_id',
-    hasGenres: false,
-    extraFields: ['artist', 'year'],
-  },
   years: {
     label: 'Year',
     pluralLabel: 'Years',
     nameField: 'year',
-    idField: 'year_id',
+    idField: 'year',
     hasGenres: false,
     extraFields: ['albums'],
   },
@@ -43,15 +35,13 @@ const currentConfig = computed(() => entityConfig[viewMode.value])
 
 const axiosArtists = useAxios('artists')
 const axiosGenres = useAxios('genres')
-const axiosAlbums = useAxios('albums')
-const axiosYears = useAxios('years')
+const axiosAlbums = useAxios('albums') // only for years view
 
 const currentAxios = computed(() => {
+  if (viewMode.value === 'years') return axiosAlbums
   const axiosMap = {
     artists: axiosArtists,
     genres: axiosGenres,
-    albums: axiosAlbums,
-    years: axiosYears,
   }
   return axiosMap[viewMode.value]
 })
@@ -65,6 +55,8 @@ const editingId = ref(null)
 const isEditing = ref(false)
 
 const openAddModal = () => {
+  if (viewMode.value === 'years') return
+
   isEditing.value = false
   editingId.value = null
   name.value = ''
@@ -75,6 +67,8 @@ const openAddModal = () => {
 }
 
 const openEditModal = (item) => {
+  if (viewMode.value === 'years') return
+
   const config = currentConfig.value
   isEditing.value = true
   editingId.value = item[config.idField]
@@ -83,8 +77,7 @@ const openEditModal = (item) => {
   genres.value = config.hasGenres && item.genres ? item.genres.join(', ') : ''
   artists.value = config.hasArtists && item.artists ? item.artists.join(', ') : ''
 
-  // Parse albums to multiline "Title | Year" format
-  if (item.albums && Array.isArray(item.albums)) {
+  if (viewMode.value === 'artists' && item.albums && Array.isArray(item.albums)) {
     albums.value = item.albums
       .map((a) => (a.title && a.year ? `${a.title} | ${a.year}` : a.title))
       .join('\n')
@@ -98,6 +91,7 @@ const openEditModal = (item) => {
 const handleSubmit = async (e) => {
   e.preventDefault()
   if (!name.value.trim()) return
+  if (viewMode.value === 'years') return
 
   const config = currentConfig.value
   const payload = {
@@ -162,9 +156,15 @@ const switchView = async (newView) => {
 
 const getDisplayValue = (item, field) => {
   const value = item[field]
+
+  if (viewMode.value === 'years' && field === 'albums' && Array.isArray(value)) {
+    return value.length > 0 ? value.join(', ') : '—'
+  }
+
   if (field === 'albums' && Array.isArray(value)) {
     return value.map((a) => (a.title && a.year ? `${a.title} (${a.year})` : a.title)).join(', ')
   }
+
   if (Array.isArray(value)) {
     return value.length > 0 ? value.join(', ') : '—'
   }
@@ -186,15 +186,6 @@ const getDisplayValue = (item, field) => {
           @click.prevent="switchView('artists')"
         >
           Artists
-        </a>
-      </li>
-      <li>
-        <a
-          href="#"
-          :class="{ active: viewMode === 'albums' }"
-          @click.prevent="switchView('albums')"
-        >
-          Albums
         </a>
       </li>
       <li>
@@ -223,25 +214,40 @@ const getDisplayValue = (item, field) => {
         <table v-else>
           <thead>
             <tr>
-              <th>{{ currentConfig.label }}</th>
-              <th v-for="field in currentConfig.extraFields" :key="field">
-                {{ field.charAt(0).toUpperCase() + field.slice(1) }}
-              </th>
-              <th>Actions</th>
+              <template v-if="viewMode === 'years'">
+                <th>Year</th>
+                <th>Albums</th>
+              </template>
+              <template v-else>
+                <th>{{ currentConfig.label }}</th>
+                <th v-for="field in currentConfig.extraFields" :key="field">
+                  {{ field.charAt(0).toUpperCase() + field.slice(1) }}
+                </th>
+                <th>Actions</th>
+              </template>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in currentAxios.apiResponse.value" :key="item[currentConfig.idField]">
-              <td>{{ item[currentConfig.nameField] }}</td>
-              <td v-for="field in currentConfig.extraFields" :key="field">
-                {{ getDisplayValue(item, field) }}
-              </td>
-              <td>
-                <button class="edit" @click="openEditModal(item)">✏️</button>
-                <button class="error" @click="currentAxios.remove(item[currentConfig.idField])">
-                  🗑️
-                </button>
-              </td>
+            <tr
+              :key="viewMode === 'years' ? item.year : item[currentConfig.idField]"
+              v-for="item in currentAxios.apiResponse.value"
+            >
+              <template v-if="viewMode === 'years'">
+                <td>{{ item.year }}</td>
+                <td>{{ item.albums.join(', ') }}</td>
+              </template>
+              <template v-else>
+                <td>{{ item[currentConfig.nameField] }}</td>
+                <td v-for="field in currentConfig.extraFields" :key="field">
+                  {{ getDisplayValue(item, field) }}
+                </td>
+                <td>
+                  <button class="edit" @click="openEditModal(item)">✏️</button>
+                  <button class="error" @click="currentAxios.remove(item[currentConfig.idField])">
+                    🗑️
+                  </button>
+                </td>
+              </template>
             </tr>
           </tbody>
         </table>
@@ -254,7 +260,9 @@ const getDisplayValue = (item, field) => {
       <div v-else class="spinner"></div>
     </div>
 
-    <button class="add-button" @click="openAddModal">➕ Add {{ currentConfig.label }}</button>
+    <button v-if="viewMode !== 'years'" class="add-button" @click="openAddModal">
+      ➕ Add {{ currentConfig.label }}
+    </button>
 
     <div popover id="add-new-modal" ref="modalRef">
       <h2>
@@ -281,7 +289,11 @@ const getDisplayValue = (item, field) => {
           <textarea id="albums" v-model="albums" rows="4"></textarea>
         </div>
 
-        <input type="submit" :value="isEditing ? 'Save Changes' : 'Add'" />
+        <input
+          v-if="viewMode !== 'years'"
+          type="submit"
+          :value="isEditing ? 'Save Changes' : 'Add'"
+        />
       </form>
     </div>
 
